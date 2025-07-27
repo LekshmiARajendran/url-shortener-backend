@@ -6,10 +6,10 @@ A simple URL Shortener backend service built with **Spring Boot (Kotlin)**, **Po
 
 ## Overview
 
-This project is part of a coding challenge. It provides an API to:
-- Shorten long URLs into short codes.
-- Redirect short codes back to the original URLs.
-- Includes a basic `/health` endpoint for quick status checks.
+This project does the following:
+- Shorten a long URL into a short code.
+- Redirect the short code back to the original URL.
+- Provide a `/health` endpoint to check if the application is running.
 
 ---
 
@@ -31,10 +31,13 @@ src/
  ├── main/
  │   ├── kotlin/com/dkb/urlshortener/
  │   │   ├── UrlshortenerApplication.kt      # Main Spring Boot entry point
- │   │   └── HealthController.kt             # Health check endpoint
+ │   │   ├── HealthController.kt             # Health check endpoint
+ │   │   ├── controller/                     # Controller layer
+ │   │   ├── service/                         # Service layer
+ │   │   └── repository/                      # Repository layer
  │   └── resources/
  │       ├── application.yml                 # Database configuration
- │       └── application.properties          # (Generated default, unused)
+ │       └── application.properties          # (Removed, unused)
  └── test/
      └── kotlin/com/dkb/urlshortener/
 ```
@@ -53,7 +56,7 @@ docker-compose up -d
 This will start a PostgreSQL container accessible at `localhost:5432` with:
 - **Database**: `urlshortener`
 - **User**: `postgres`
-- **Password**: `password`
+- **Password**: `project`
 
 ---
 
@@ -87,6 +90,13 @@ Application is running!
 - `POST /shorten` – Create a shortened URL
 - `GET /{shortCode}` – Redirect to original URL
 - `GET /urls` – (Optional) List all shortened URLs
+
+---
+
+## Notes
+
+- Make sure PostgreSQL is running before starting the application.
+- Update `application.yml` if you want to change database credentials.
 
 ---
 
