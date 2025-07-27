@@ -7,9 +7,10 @@ A simple URL Shortener backend service built with **Spring Boot (Kotlin)**, **Po
 ## Overview
 
 This project does the following:
-- Shorten a long URL into a short code.
-- Redirect the short code back to the original URL.
-- Provide a `/health` endpoint to check if the application is running.
+
+- Shortens a long URL into a short code.
+- Redirects a short code back to the original URL.
+- Provides a `/health` endpoint to check if the application is running.
 
 ---
 
@@ -32,12 +33,12 @@ src/
  │   ├── kotlin/com/dkb/urlshortener/
  │   │   ├── UrlshortenerApplication.kt      # Main Spring Boot entry point
  │   │   ├── HealthController.kt             # Health check endpoint
- │   │   ├── controller/                     # Controller layer
- │   │   ├── service/                         # Service layer
- │   │   └── repository/                      # Repository layer
+ │   │   ├── controller/                     # Controller layer (API endpoints)
+ │   │   ├── service/                        # Service layer (business logic)
+ │   │   ├── repository/                     # Repository layer (database access)
+ │   │   └── model/                          # Entity classes
  │   └── resources/
  │       ├── application.yml                 # Database configuration
- │       └── application.properties          # (Removed, unused)
  └── test/
      └── kotlin/com/dkb/urlshortener/
 ```
@@ -49,14 +50,14 @@ src/
 ### 1. Start PostgreSQL using Docker
 
 ```bash
-cd dkb-postgres-docker
-docker-compose up -d
+docker start urlshortener-db
 ```
 
-This will start a PostgreSQL container accessible at `localhost:5432` with:
-- **Database**: `urlshortener`
-- **User**: `postgres`
-- **Password**: `project`
+If container does not exist, create it with:
+
+```bash
+docker run --name urlshortener-db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=urlshortener -p 5432:5432 -d postgres:16
+```
 
 ---
 
@@ -70,33 +71,51 @@ From the project root (`urlshortener`):
 
 ---
 
-### 3. Test the Health Endpoint
+### 3. Test the Endpoints
 
-Open browser or use curl:
+#### Health Check
 
 ```
-http://localhost:8080/health
+GET http://localhost:8080/health
 ```
 
-Expected response:
+Response:
 ```
 Application is running!
 ```
 
+#### Shorten URL
+
+```
+POST http://localhost:8080/shorten
+Body (JSON):
+{
+  "longUrl": "https://example.com"
+}
+```
+
+Response:
+```
+{
+  "shortCode": "abc123"
+}
+```
+
+#### Redirect Short Code
+
+```
+GET http://localhost:8080/{shortCode}
+```
+
+Redirects to the original URL.
+
 ---
 
-## Future Endpoints (Planned)
+## Future Work
 
-- `POST /shorten` – Create a shortened URL
-- `GET /{shortCode}` – Redirect to original URL
-- `GET /urls` – (Optional) List all shortened URLs
-
----
-
-## Notes
-
-- Make sure PostgreSQL is running before starting the application.
-- Update `application.yml` if you want to change database credentials.
+- Implement endpoint to list all stored URLs (`GET /urls` – optional).
+- Add unit tests, integration tests, and acceptance tests.
+- Improve validation and error handling for edge cases.
 
 ---
 
