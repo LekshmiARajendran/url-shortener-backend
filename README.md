@@ -12,6 +12,8 @@ This project does the following:
 - Redirects a short code back to the original URL.
 - Provides a `/health` endpoint to check if the application is running.
 
+**Note:** Endpoints are now fully tested with Postman for both POST (shorten URL) and GET (retrieve original URL).
+
 ---
 
 ## Tech Stack
