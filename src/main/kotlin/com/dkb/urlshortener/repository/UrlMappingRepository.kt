@@ -2,9 +2,11 @@ package com.dkb.urlshortener.repository
 
 import com.dkb.urlshortener.model.UrlMapping
 import org.springframework.data.jpa.repository.JpaRepository
-import org.springframework.stereotype.Repository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 
-@Repository
 interface UrlMappingRepository : JpaRepository<UrlMapping, Long> {
-    fun findByShortCode(shortCode: String): UrlMapping?
+
+    @Query("SELECT u FROM UrlMapping u WHERE LOWER(u.shortCode) = LOWER(:shortCode)")
+    fun findByShortCode(@Param("shortCode") shortCode: String): UrlMapping?
 }
