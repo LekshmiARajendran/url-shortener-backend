@@ -2,6 +2,7 @@ package com.dkb.urlshortener.repository
 
 import com.dkb.urlshortener.model.UrlMapping
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
@@ -14,6 +15,12 @@ import org.junit.jupiter.api.assertThrows
 class UrlMappingRepositoryTest @Autowired constructor(
     val repository: UrlMappingRepository
 ) {
+
+    @BeforeEach
+    fun clearDatabase() {
+        // Ensures test DB is clean before each test
+        repository.deleteAll()
+    }
 
     @Test
     fun `should save and retrieve UrlMapping by shortCode`() {
@@ -41,7 +48,7 @@ class UrlMappingRepositoryTest @Autowired constructor(
         repository.save(UrlMapping(originalUrl = "https://b.com", shortCode = "b22222"))
 
         val all = repository.findAll()
-        assertEquals(2, all.size)
+        assertEquals(2, all.size) // Now guaranteed to have only 2 entries
     }
 
     @Test
