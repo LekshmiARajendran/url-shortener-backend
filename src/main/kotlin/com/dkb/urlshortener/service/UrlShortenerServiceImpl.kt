@@ -2,68 +2,79 @@ package com.dkb.urlshortener.service
 
 import com.dkb.urlshortener.dto.ShortenRequestDto
 import com.dkb.urlshortener.dto.ShortenResponseDto
-import com.dkb.urlshortener.dto.OriginalUrlResponse
 import com.dkb.urlshortener.model.UrlMapping
 import com.dkb.urlshortener.repository.UrlMappingRepository
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
+import java.net.MalformedURLException
+import java.net.URL
 import java.security.MessageDigest
-import java.security.SecureRandom
-import java.util.Base64
+import java.util.*
 
 @Service
 class UrlShortenerServiceImpl(
-    private val urlMappingRepository: UrlMappingRepository
+    private val repository: UrlMappingRepository,
+    @Value("\${app.base-url}") private val baseUrl: String
 ) : UrlShortenerService {
 
     override fun shortenUrl(request: ShortenRequestDto): ShortenResponseDto {
-        val originalUrl = request.originalUrl
-
-        // Validate URL
-        if (!isValidUrl(originalUrl)) {
+        // Validate input URL format
+        if (!isValidUrl(request.originalUrl)) {
             throw IllegalArgumentException("Invalid URL format")
         }
 
-        // Generate short code
-        var shortCode: String
+        var entity: UrlMapping? = null
+        var saved = false
+
+        // Retry loop to handle rare short code collisions
+        while (!saved) {
+            try {
+                val shortCode = generateUniqueShortCode(request.originalUrl)
+
+                // Save mapping (no uniqueness on original URL, unique on shortCode)
+                entity = repository.save(UrlMapping(originalUrl = request.originalUrl, shortCode = shortCode))
+                saved = true
+            } catch (ex: DataIntegrityViolationException) {
+                // If collision occurs (duplicate shortCode), retry with new salt
+                continue
+            }
+        }
+
+        // Return ONLY the short code (Postman expects this)
+        return ShortenResponseDto(entity!!.shortCode)
+    }
+
+    override fun getOriginalUrl(shortCode: String): String {
+        val mapping = repository.findByShortCode(shortCode)
+            ?: throw IllegalArgumentException("Short URL not found")
+        return mapping.originalUrl
+    }
+
+    /**
+     * Generates a unique short code using random salt + MD5 hash + Base64 (6 chars)
+     */
+    private fun generateUniqueShortCode(url: String): String {
+        var code: String
         do {
-            shortCode = generateShortCode(originalUrl)
-        } while (urlMappingRepository.findByShortCode(shortCode) != null)
-
-        // Save mapping
-        val mapping = UrlMapping(
-            originalUrl = originalUrl,
-            shortCode = shortCode
-        )
-        urlMappingRepository.save(mapping)
-
-        return ShortenResponseDto(
-            shortCode = shortCode,
-            originalUrl = originalUrl
-        )
+            code = generateShortCodeWithSalt(url)
+        } while (repository.findByShortCode(code) != null) // extra safety
+        return code
     }
 
-    override fun getOriginalUrl(shortCode: String): OriginalUrlResponse? {
-        val mapping = urlMappingRepository.findByShortCode(shortCode)
-        return mapping?.let { OriginalUrlResponse(it.originalUrl) }
+    private fun generateShortCodeWithSalt(url: String): String {
+        val salt = UUID.randomUUID().toString() // random salt
+        val saltedUrl = "$salt$url"
+        val digest = MessageDigest.getInstance("MD5").digest(saltedUrl.toByteArray())
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(digest).take(6)
     }
-
-    // ---- Helper methods ----
 
     private fun isValidUrl(url: String): Boolean {
-        val urlRegex = Regex("^(https?://)?([\\w.-]+)\\.([a-z]{2,6})([/\\w .-]*)*/?$")
-        return urlRegex.matches(url)
-    }
-
-    private fun generateShortCode(originalUrl: String): String {
-        val salt = ByteArray(8)
-        SecureRandom().nextBytes(salt)
-        val saltedUrl = salt.toString(Charsets.UTF_8) + originalUrl
-
-        // MD5 hash
-        val md5Digest = MessageDigest.getInstance("MD5")
-        val hash = md5Digest.digest(saltedUrl.toByteArray())
-
-        // Base64 encode and take first 6 chars
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(hash).take(6)
+        return try {
+            URL(url)
+            true
+        } catch (e: MalformedURLException) {
+            false
+        }
     }
 }

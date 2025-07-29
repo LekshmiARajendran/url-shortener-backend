@@ -2,36 +2,34 @@ package com.dkb.urlshortener.controller
 
 import com.dkb.urlshortener.dto.ShortenRequestDto
 import com.dkb.urlshortener.dto.ShortenResponseDto
-import com.dkb.urlshortener.dto.OriginalUrlResponse
 import com.dkb.urlshortener.service.UrlShortenerService
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api")
 class UrlShortenerController(
-    private val urlShortenerService: UrlShortenerService
+    private val service: UrlShortenerService
 ) {
 
+    /**
+     * POST /api/shorten
+     * Request Body: { "originalUrl": "https://example.com" }
+     * Response: { "shortCode": "abc123" }
+     */
     @PostMapping("/shorten")
-    fun shortenUrl(@RequestBody request: ShortenRequestDto): ResponseEntity<Any> {
-        return try {
-            val response = urlShortenerService.shortenUrl(request)
-            ResponseEntity.ok(response)
-        } catch (ex: IllegalArgumentException) {
-            ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to ex.message))
-        }
+    fun shortenUrl(@RequestBody request: ShortenRequestDto): ResponseEntity<ShortenResponseDto> {
+        val response = service.shortenUrl(request)
+        return ResponseEntity.ok(response)
     }
 
+    /**
+     * GET /api/{shortCode}
+     * Response: { "originalUrl": "https://example.com" }
+     */
     @GetMapping("/{shortCode}")
-    fun getOriginalUrl(@PathVariable shortCode: String): ResponseEntity<Any> {
-        val response = urlShortenerService.getOriginalUrl(shortCode)
-        return if (response != null) {
-            ResponseEntity.ok(response)
-        } else {
-            ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(mapOf("error" to "Short code not found"))
-        }
+    fun getOriginalUrl(@PathVariable shortCode: String): ResponseEntity<Map<String, String>> {
+        val originalUrl = service.getOriginalUrl(shortCode)
+        return ResponseEntity.ok(mapOf("originalUrl" to originalUrl))
     }
 }
