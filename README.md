@@ -1,7 +1,7 @@
 # URL Shortener Backend
 
-A backend URL shortening service built using Kotlin, Spring Boot, PostgreSQL, and Docker.
-This project was created as part of a coding challenge to demonstrate backend development skills, clean architecture, and integration testing with real databases.
+- A backend URL shortening service built using Kotlin, Spring Boot, PostgreSQL, and Docker.
+- This project was created as part of a coding challenge to demonstrate backend development skills, clean architecture, and integration testing with real databases.
 ---
 
 # Features
