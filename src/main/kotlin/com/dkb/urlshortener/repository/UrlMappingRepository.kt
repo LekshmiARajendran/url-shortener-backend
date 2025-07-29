@@ -6,7 +6,5 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface UrlMappingRepository : JpaRepository<UrlMapping, Long> {
-
-    // Finds the URL mapping ignoring case of the short code
-    fun findByShortCodeIgnoreCase(shortCode: String): UrlMapping?
+    fun findByShortCode(shortCode: String): UrlMapping?
 }
