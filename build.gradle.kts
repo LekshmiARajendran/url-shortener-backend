@@ -20,22 +20,25 @@ repositories {
 }
 
 dependencies {
+	// Core Spring Boot
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-	implementation("org.springframework.boot:spring-boot-starter")
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
-	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
+	implementation("org.jetbrains.kotlin:kotlin-reflect")
+
+	// Database
 	runtimeOnly("org.postgresql:postgresql")
 
-	// Testing
-	testImplementation("org.springframework.boot:spring-boot-starter-test") // includes JUnit 5
-	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5") // Kotlin test integration
-	testImplementation("io.mockk:mockk:1.13.10") // MockK for mocking
-
+	// Testing (JUnit 5 + MockK + SpringMockK)
+	testImplementation("org.springframework.boot:spring-boot-starter-test") {
+		exclude(group = "org.mockito") // remove Mockito if not using
+	}
+	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+	testImplementation("io.mockk:mockk:1.13.12")
+	testImplementation("com.ninja-squad:springmockk:4.0.2")
 }
-
 
 kotlin {
 	compilerOptions {

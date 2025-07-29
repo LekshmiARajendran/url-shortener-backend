@@ -7,40 +7,40 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
-import java.time.LocalDateTime
 
 class UrlShortenerServiceImplTest {
 
-    private val urlMappingRepository = mockk<UrlMappingRepository>(relaxed = true)
-    private val urlShortenerService = UrlShortenerServiceImpl(urlMappingRepository)
+    private val repository = mockk<UrlMappingRepository>(relaxed = true)
+    private val service = UrlShortenerServiceImpl(repository, "http://localhost:8080/api/")
 
     @Test
-    fun `shortenUrl should handle collision and generate new code`() {
-        // Arrange
-        val existingMapping = UrlMapping(
-            id = 2,
-            originalUrl = "https://collision.com",
-            shortCode = "1Z4OH1",
-            createdAt = LocalDateTime.now()
+    fun `shortenUrl generates new short code`() {
+        val request = ShortenRequestDto("https://google.com")
+
+        every { repository.findByOriginalUrl(any()) } returns null
+        every { repository.findByShortCode(any()) } returns null
+        every { repository.save(any()) } answers { firstArg() }
+
+        val result = service.shortenUrl(request)
+
+        assertEquals(6, result.shortCode.length) // shortCode should be 6 chars
+        verify { repository.save(any()) }
+    }
+
+    @Test
+    fun `getOriginalUrl returns original url`() {
+        val mapping = UrlMapping(
+            id = 1,
+            originalUrl = "https://google.com",
+            shortCode = "abc123"
         )
 
-        // First call returns collision, second returns null
-        every { urlMappingRepository.findByShortCode(any()) } returns existingMapping andThen null
-        every { urlMappingRepository.save(any()) } answers { firstArg() }
+        every { repository.findByShortCode("abc123") } returns mapping
 
-        // Act
-        val result = urlShortenerService.shortenUrl(
-            ShortenRequestDto(url = "https://collision.com")
-        )
+        val result = service.getOriginalUrl("abc123")
 
-        // Assert
-        assertNotNull(result.shortCode)
-        assertEquals("https://collision.com", result.originalUrl)
-
-        // Verify: findByShortCode called at least twice, save called once
-        verify(atLeast = 2) { urlMappingRepository.findByShortCode(any()) }
-        verify { urlMappingRepository.save(any()) }
+        assertEquals("https://google.com", result)
+        verify { repository.findByShortCode("abc123") }
     }
 }

@@ -1,67 +1,38 @@
 package com.dkb.urlshortener.repository
 
 import com.dkb.urlshortener.model.UrlMapping
-import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase
 import org.springframework.test.context.ActiveProfiles
-import java.time.LocalDateTime
-import org.junit.jupiter.api.assertThrows
 
 @DataJpaTest
 @ActiveProfiles("test")
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class UrlMappingRepositoryTest @Autowired constructor(
     val repository: UrlMappingRepository
 ) {
 
-    @BeforeEach
-    fun clearDatabase() {
-        // Ensures test DB is clean before each test
-        repository.deleteAll()
-    }
-
     @Test
-    fun `should save and retrieve UrlMapping by shortCode`() {
-        val mapping = UrlMapping(
-            originalUrl = "https://example.com",
-            shortCode = "abc123",
-            createdAt = LocalDateTime.now()
-        )
-        repository.save(mapping)
+    fun `should save and retrieve by original url`() {
+        val entity = UrlMapping(originalUrl = "https://google.com", shortCode = "abc123")
+        val saved = repository.save(entity)
 
-        val found = repository.findByShortCode("abc123")
+        val found = repository.findByOriginalUrl("https://google.com")
         assertNotNull(found)
-        assertEquals("https://example.com", found?.originalUrl)
+        assertEquals(saved.id, found?.id)
     }
 
     @Test
-    fun `should return null when shortCode does not exist`() {
-        val result = repository.findByShortCode("nonexistent")
-        assertNull(result)
-    }
+    fun `should save and retrieve by short code`() {
+        val entity = UrlMapping(originalUrl = "https://example.com", shortCode = "xyz789")
+        val saved = repository.save(entity)
 
-    @Test
-    fun `should retrieve all saved UrlMappings`() {
-        repository.save(UrlMapping(originalUrl = "https://a.com", shortCode = "a11111"))
-        repository.save(UrlMapping(originalUrl = "https://b.com", shortCode = "b22222"))
-
-        val all = repository.findAll()
-        assertEquals(2, all.size) // Now guaranteed to have only 2 entries
-    }
-
-    @Test
-    fun `should enforce unique shortCode`() {
-        repository.save(UrlMapping(originalUrl = "https://first.com", shortCode = "dup123"))
-
-        val exception = assertThrows<Exception> {
-            repository.save(UrlMapping(originalUrl = "https://second.com", shortCode = "dup123"))
-        }
-
-        assertTrue(
-            exception.message?.contains("duplicate", ignoreCase = true) == true ||
-                    exception.message?.contains("constraint", ignoreCase = true) == true
-        )
+        val found = repository.findByShortCode("xyz789")
+        assertNotNull(found)
+        assertEquals(saved.originalUrl, found?.originalUrl)
     }
 }

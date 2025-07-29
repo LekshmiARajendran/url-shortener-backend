@@ -10,6 +10,7 @@ spring:
       ddl-auto: update
     show-sql: true
 
-  test:
-    database:
-      replace: none
+# Tell Spring not to replace this with an embedded DB
+test:
+  database:
+    replace: none

@@ -1,72 +1,53 @@
 package com.dkb.urlshortener.integration
 
 import com.dkb.urlshortener.dto.ShortenRequestDto
-import com.fasterxml.jackson.databind.ObjectMapper
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.web.client.TestRestTemplate
+import org.springframework.boot.test.web.server.LocalServerPort
+import org.springframework.http.HttpEntity
+import org.springframework.http.HttpMethod
+import org.springframework.http.HttpStatus
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.web.servlet.MockMvc
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
-import org.springframework.test.web.servlet.result.MockMvcResultHandlers.print
 
-@SpringBootTest
-@AutoConfigureMockMvc
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-class UrlShortenerIntegrationTest {
-
-    @Autowired
-    private lateinit var mockMvc: MockMvc
-
-    @Autowired
-    private lateinit var objectMapper: ObjectMapper
+class UrlShortenerIntegrationTest(
+    @Autowired val restTemplate: TestRestTemplate,
+    @LocalServerPort val port: Int
+) {
 
     @Test
-    fun `full flow - shorten URL and retrieve it`() {
-        // Step 1: Shorten URL
+    fun `should shorten URL and retrieve original`() {
+        // Step 1: Send POST to shorten URL
         val request = ShortenRequestDto("https://integration-test.com")
+        val headers = HttpHeaders().apply { contentType = MediaType.APPLICATION_JSON }
+        val entity = HttpEntity(request, headers)
 
-        val shortenResponse = mockMvc.perform(
-            post("/api/shorten")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
+        val shortenResponse = restTemplate.postForEntity(
+            "http://localhost:$port/api/shorten",
+            entity,
+            Map::class.java
         )
-            .andDo(print())
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.shortCode").exists())
-            .andReturn()
 
-        // Extract shortCode from JSON
-        val jsonResponse = shortenResponse.response.contentAsString
-        val shortCode = objectMapper.readTree(jsonResponse).get("shortCode").asText()
+        // Validate response: shortCode should be returned
+        assertEquals(HttpStatus.OK, shortenResponse.statusCode)
+        val shortCode = shortenResponse.body?.get("shortCode") as String
+        println("Generated shortCode: $shortCode")
 
-        // Step 2: Retrieve original URL
-        mockMvc.perform(get("/api/original/$shortCode"))
-            .andDo(print())
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.originalUrl").value("https://integration-test.com"))
-    }
-
-    @Test
-    fun `get all URLs should return list including newly added URL`() {
-        // Add one URL
-        val request = ShortenRequestDto("https://list-test.com")
-
-        mockMvc.perform(
-            post("/api/shorten")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
+        // Step 2: Send GET to retrieve original URL
+        val getResponse = restTemplate.exchange(
+            "http://localhost:$port/api/$shortCode",
+            HttpMethod.GET,
+            null,
+            Map::class.java
         )
-            .andExpect(status().isOk)
 
-        // Get all URLs
-        mockMvc.perform(get("/api/urls"))
-            .andDo(print())
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)))
+        assertEquals(HttpStatus.OK, getResponse.statusCode)
+        assertEquals("https://integration-test.com", getResponse.body?.get("originalUrl"))
     }
 }
