@@ -1,126 +1,90 @@
 # URL Shortener Backend
 
-A simple URL Shortener backend service built with **Spring Boot (Kotlin)**, **PostgreSQL**, and **Docker**.
+This is a beginner-friendly URL Shortener backend project built with **Spring Boot (Kotlin)** and **PostgreSQL**.  
+I created this as part of a coding challenge while learning backend development and practicing clean architecture and testing.
 
 ---
 
-## Overview
+## What this project does
 
-This project does the following:
-
-- Shortens a long URL into a short code.
-- Redirects a short code back to the original URL.
-- Provides a `/health` endpoint to check if the application is running.
-
-**Note:** Endpoints are now fully tested with Postman for both POST (shorten URL) and GET (retrieve original URL).
+- Shorten a long URL into a short 6-character code.
+- Retrieve the original URL using the short code.
+- List all stored URLs.
+- Includes basic input validation and error handling.
 
 ---
 
-## Tech Stack
+## Technologies I used
 
-- **Kotlin** – Backend language
-- **Spring Boot** – Web framework
-- **Spring Data JPA** – Database ORM
+- **Kotlin** – Programming language
+- **Spring Boot** – To create REST APIs
+- **Spring Data JPA** – For database interactions
 - **PostgreSQL** – Database
-- **Docker** – Containerized PostgreSQL setup
+- **Docker** – To run PostgreSQL in a container
+- **JUnit 5 + MockK + MockMvc** – For testing
 - **Gradle (Kotlin DSL)** – Build tool
 
 ---
 
-## Project Structure
+## How the project is organized
 
-```
-src/
- ├── main/
- │   ├── kotlin/com/dkb/urlshortener/
- │   │   ├── UrlshortenerApplication.kt      # Main Spring Boot entry point
- │   │   ├── HealthController.kt             # Health check endpoint
- │   │   ├── controller/                     # Controller layer (API endpoints)
- │   │   ├── service/                        # Service layer (business logic)
- │   │   ├── repository/                     # Repository layer (database access)
- │   │   └── model/                          # Entity classes
- │   └── resources/
- │       ├── application.yml                 # Database configuration
- └── test/
-     └── kotlin/com/dkb/urlshortener/
-```
+- `controller/` → Handles API requests (endpoints)
+- `service/` → Contains business logic
+- `repository/` → Connects to the database
+- `model/` → Database entity
+- `dto/` → Request and response objects
+- `exception/` → Custom exceptions and error handling
+
+There is also a **test** folder where I wrote unit tests and integration tests.
 
 ---
 
-## Running the Project
+## How to run this project (beginner steps)
 
-### 1. Start PostgreSQL using Docker
+1. **Start PostgreSQL in Docker**
+    - If the container is already created, just start it:  
+      `docker start urlshortener-db`
+    - If not, create it for the first time:  
+      `docker run --name urlshortener-db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=urlshortener -p 5432:5432 -d postgres:16`
 
-```bash
-docker start urlshortener-db
-```
+2. **Run the application**
+    - Open the project in IntelliJ and run `UrlshortenerApplication.kt`, **or** use terminal:  
+      `./gradlew bootRun`
 
-If container does not exist, create it with:
-
-```bash
-docker run --name urlshortener-db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=urlshortener -p 5432:5432 -d postgres:16
-```
-
----
-
-### 2. Run the Spring Boot Application
-
-From the project root (`urlshortener`):
-
-```bash
-./gradlew bootRun
-```
+3. **Test the API endpoints using Postman**
+    - Shorten URL: `POST http://localhost:8080/api/shorten`  
+      Body: `{ "url": "https://example.com" }`
+    - Retrieve original: `GET http://localhost:8080/api/original/{shortCode}`
+    - List all URLs: `GET http://localhost:8080/api/urls`
 
 ---
 
-### 3. Test the Endpoints
+## How I tested it
 
-#### Health Check
-
-```
-GET http://localhost:8080/health
-```
-
-Response:
-```
-Application is running!
-```
-
-#### Shorten URL
-
-```
-POST http://localhost:8080/shorten
-Body (JSON):
-{
-  "longUrl": "https://example.com"
-}
-```
-
-Response:
-```
-{
-  "shortCode": "abc123"
-}
-```
-
-#### Redirect Short Code
-
-```
-GET http://localhost:8080/{shortCode}
-```
-
-Redirects to the original URL.
+- Wrote **unit tests** for service and controller using mocks (MockK and MockMvc).
+- Wrote **repository tests** using real PostgreSQL (test profile).
+- Wrote **integration tests** to check the entire flow (API → DB).
+- All tests pass (19 tests, 100% successful).
 
 ---
 
-## Future Work
+## Future improvements I am planning
 
-- Implement endpoint to list all stored URLs (`GET /urls` – optional).
-- Add unit tests, integration tests, and acceptance tests.
-- Improve validation and error handling for edge cases.
+- Add redirect feature (e.g., `GET /{shortCode}` should redirect to original URL).
+- Add Docker Compose to run both app and database together easily.
+- Write automated Postman test scripts (instead of only manual testing).
+---
+
+## Why I built this
+
+- To learn how to structure a backend project properly.
+- To practice database integration with Docker.
+- To understand unit testing and integration testing in a real project.
 
 ---
 
-## License
+## Note
 
-This project is for coding challenge purposes only.
+This project is part of a coding challenge and also my learning journey in backend development.  
+It's not for production use but demonstrates how I approach building and testing a REST API from scratch.
+
