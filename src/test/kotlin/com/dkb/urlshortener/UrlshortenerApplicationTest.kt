@@ -4,10 +4,9 @@ import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
 
 @SpringBootTest
-class UrlshortenerApplicationTests {
-
+class UrlshortenerApplicationTest {
 	@Test
 	fun contextLoads() {
+		// Ensures Spring context loads without errors
 	}
-
 }

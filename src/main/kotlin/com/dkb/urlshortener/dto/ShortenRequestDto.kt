@@ -1,5 +1,9 @@
 package com.dkb.urlshortener.dto
 
+import jakarta.validation.constraints.NotBlank
+
+
 data class ShortenRequestDto(
-    val originalUrl: String
+    @field:NotBlank(message = "URL must not be blank")
+    val url: String
 )

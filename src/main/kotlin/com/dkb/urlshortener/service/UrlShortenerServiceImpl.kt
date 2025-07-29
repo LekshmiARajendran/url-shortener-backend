@@ -15,24 +15,25 @@ class UrlShortenerServiceImpl(
 ) : UrlShortenerService {
 
     override fun shortenUrl(request: ShortenRequestDto): ShortenResponseDto {
-        val originalUrl = request.originalUrl
+        val originalUrl = request.url
 
-        // Hash using MD5 and take first 6 chars
+        // Generate MD5 hash and use first 6 chars
         val md5Hash = MessageDigest.getInstance("MD5").digest(originalUrl.toByteArray())
         var shortCode = md5Hash.joinToString("") { "%02x".format(it) }.substring(0, 6)
 
         var attempts = 0
         val maxAttempts = 5
 
+        // Check for collision and retry
         while (urlMappingRepository.findByShortCode(shortCode) != null && attempts < maxAttempts) {
             val randomExtra = (0..9).random().toString()
             shortCode = (shortCode + randomExtra).take(6)
             attempts++
         }
 
-        // If still collides after maxAttempts, regenerate entirely
-        if (urlMappingRepository.findByShortCode(shortCode) != null) {
-            shortCode = (100000..999999).random().toString() // fallback random 6-digit code
+        // If still colliding after retries, generate fallback random code
+        if (attempts == maxAttempts && urlMappingRepository.findByShortCode(shortCode) != null) {
+            shortCode = (100000..999999).random().toString()
         }
 
         val urlMapping = UrlMapping(
@@ -51,7 +52,6 @@ class UrlShortenerServiceImpl(
         return OriginalUrlResponse(originalUrl = mapping.originalUrl)
     }
 
-    // New method to return all stored URLs
     override fun getAllUrls(): List<OriginalUrlResponse> {
         return urlMappingRepository.findAll().map {
             OriginalUrlResponse(it.originalUrl)
