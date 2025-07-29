@@ -1,13 +1,14 @@
 package com.dkb.urlshortener.service
 
-import com.dkb.urlshortener.dto.OriginalUrlResponse
 import com.dkb.urlshortener.dto.ShortenRequestDto
 import com.dkb.urlshortener.dto.ShortenResponseDto
-import com.dkb.urlshortener.exception.UrlNotFoundException
+import com.dkb.urlshortener.dto.OriginalUrlResponse
 import com.dkb.urlshortener.model.UrlMapping
 import com.dkb.urlshortener.repository.UrlMappingRepository
 import org.springframework.stereotype.Service
 import java.security.MessageDigest
+import java.security.SecureRandom
+import java.util.Base64
 
 @Service
 class UrlShortenerServiceImpl(
@@ -15,46 +16,54 @@ class UrlShortenerServiceImpl(
 ) : UrlShortenerService {
 
     override fun shortenUrl(request: ShortenRequestDto): ShortenResponseDto {
-        val originalUrl = request.url
+        val originalUrl = request.originalUrl
 
-        // Generate MD5 hash and use first 6 chars
-        val md5Hash = MessageDigest.getInstance("MD5").digest(originalUrl.toByteArray())
-        var shortCode = md5Hash.joinToString("") { "%02x".format(it) }.substring(0, 6)
-
-        var attempts = 0
-        val maxAttempts = 5
-
-        // Check for collision and retry
-        while (urlMappingRepository.findByShortCode(shortCode) != null && attempts < maxAttempts) {
-            val randomExtra = (0..9).random().toString()
-            shortCode = (shortCode + randomExtra).take(6)
-            attempts++
+        // Validate URL
+        if (!isValidUrl(originalUrl)) {
+            throw IllegalArgumentException("Invalid URL format")
         }
 
-        // If still colliding after retries, generate fallback random code
-        if (attempts == maxAttempts && urlMappingRepository.findByShortCode(shortCode) != null) {
-            shortCode = (100000..999999).random().toString()
-        }
+        // Generate short code
+        var shortCode: String
+        do {
+            shortCode = generateShortCode(originalUrl)
+        } while (urlMappingRepository.findByShortCode(shortCode) != null)
 
-        val urlMapping = UrlMapping(
+        // Save mapping
+        val mapping = UrlMapping(
             originalUrl = originalUrl,
             shortCode = shortCode
         )
-        urlMappingRepository.save(urlMapping)
+        urlMappingRepository.save(mapping)
 
-        return ShortenResponseDto(shortCode = shortCode)
+        return ShortenResponseDto(
+            shortCode = shortCode,
+            originalUrl = originalUrl
+        )
     }
 
-    override fun getOriginalUrl(shortCode: String): OriginalUrlResponse {
+    override fun getOriginalUrl(shortCode: String): OriginalUrlResponse? {
         val mapping = urlMappingRepository.findByShortCode(shortCode)
-            ?: throw UrlNotFoundException("No URL found for short code: $shortCode")
-
-        return OriginalUrlResponse(originalUrl = mapping.originalUrl)
+        return mapping?.let { OriginalUrlResponse(it.originalUrl) }
     }
 
-    override fun getAllUrls(): List<OriginalUrlResponse> {
-        return urlMappingRepository.findAll().map {
-            OriginalUrlResponse(it.originalUrl)
-        }
+    // ---- Helper methods ----
+
+    private fun isValidUrl(url: String): Boolean {
+        val urlRegex = Regex("^(https?://)?([\\w.-]+)\\.([a-z]{2,6})([/\\w .-]*)*/?$")
+        return urlRegex.matches(url)
+    }
+
+    private fun generateShortCode(originalUrl: String): String {
+        val salt = ByteArray(8)
+        SecureRandom().nextBytes(salt)
+        val saltedUrl = salt.toString(Charsets.UTF_8) + originalUrl
+
+        // MD5 hash
+        val md5Digest = MessageDigest.getInstance("MD5")
+        val hash = md5Digest.digest(saltedUrl.toByteArray())
+
+        // Base64 encode and take first 6 chars
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(hash).take(6)
     }
 }

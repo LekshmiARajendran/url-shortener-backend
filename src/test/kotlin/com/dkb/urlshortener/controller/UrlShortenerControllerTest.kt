@@ -1,97 +1,115 @@
-package com.dkb.urlshortener.controller
+package com.dkb.urlshortener.service
 
+import io.mockk.junit5.MockKExtension
+import org.junit.jupiter.api.extension.ExtendWith
 import com.dkb.urlshortener.dto.ShortenRequestDto
-import com.dkb.urlshortener.dto.ShortenResponseDto
-import com.dkb.urlshortener.dto.OriginalUrlResponse
 import com.dkb.urlshortener.exception.UrlNotFoundException
-import com.dkb.urlshortener.service.UrlShortenerService
+import com.dkb.urlshortener.model.UrlMapping
+import com.dkb.urlshortener.repository.UrlMappingRepository
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
-import org.springframework.http.MediaType
-import org.springframework.test.context.bean.override.mockito.MockitoBean
-import org.springframework.test.web.servlet.MockMvc
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
-import com.fasterxml.jackson.databind.ObjectMapper
+import org.junit.jupiter.api.assertThrows
 
-@WebMvcTest(UrlShortenerController::class)
-class UrlShortenerControllerTest {
+@ExtendWith(MockKExtension::class)
+class UrlShortenerServiceImplTest {
 
-    @Autowired
-    private lateinit var mockMvc: MockMvc
+    private val repository: UrlMappingRepository = mockk(relaxed = true)
+    private val service = UrlShortenerServiceImpl(repository)
 
-    @MockitoBean
-    private lateinit var service: UrlShortenerService
-
-    private val objectMapper = ObjectMapper()
-
-    // ---------- Positive Tests ----------
+    // ---------- shortenUrl() Tests ----------
 
     @Test
-    fun `shortenUrl should return short code`() {
+    fun `shortenUrl should generate short code and save mapping`() {
         val request = ShortenRequestDto("https://example.com")
-        val response = ShortenResponseDto("abc123")
 
-        Mockito.`when`(service.shortenUrl(request)).thenReturn(response)
+        every { repository.findByShortCode(any()) } returns null
+        every { repository.save(any()) } returns UrlMapping(1L, "https://example.com", "abc123")
 
-        mockMvc.perform(
-            post("/api/shorten") // Updated path with /api
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
+        val result = service.shortenUrl(request)
+
+        assertEquals(6, result.shortCode.length) // Validate length only
+        verify { repository.save(any()) }
+    }
+
+    @Test
+    fun `shortenUrl should handle collision and generate new code`() {
+        val request = ShortenRequestDto("https://collision.com")
+
+        // Simulate first collision, then success
+        every { repository.findByShortCode(any()) }
+            .returns(UrlMapping(1L, "https://existing.com", "abc123")) // collision
+            .andThen(null) // success on retry
+
+        every { repository.save(any()) } returns UrlMapping(2L, "https://collision.com", "xyz456")
+
+        val result = service.shortenUrl(request)
+
+        assertEquals(6, result.shortCode.length)
+        verify { repository.save(any()) } // Only check save called (not count)
+    }
+
+    @Test
+    fun `shortenUrl should create unique short codes for different URLs`() {
+        val request1 = ShortenRequestDto("https://example1.com")
+        val request2 = ShortenRequestDto("https://example2.com")
+
+        every { repository.findByShortCode(any()) } returns null
+        every { repository.save(any()) } answers { firstArg<UrlMapping>() }
+
+        val result1 = service.shortenUrl(request1)
+        val result2 = service.shortenUrl(request2)
+
+        assertEquals(6, result1.shortCode.length)
+        assertEquals(6, result2.shortCode.length)
+        assertNotEquals(result1.shortCode, result2.shortCode)
+    }
+
+    // ---------- getOriginalUrl() Tests ----------
+
+    @Test
+    fun `getOriginalUrl should return URL when found`() {
+        every { repository.findByShortCode("abc123") } returns UrlMapping(1L, "https://example.com", "abc123")
+
+        val result = service.getOriginalUrl("abc123")
+
+        assertEquals("https://example.com", result.originalUrl)
+    }
+
+    @Test
+    fun `getOriginalUrl should throw exception when not found`() {
+        every { repository.findByShortCode("invalid") } returns null
+
+        val exception = assertThrows<UrlNotFoundException> {
+            service.getOriginalUrl("invalid")
+        }
+
+        assertEquals("No URL found for short code: invalid", exception.message)
+    }
+
+    // ---------- getAllUrls() Tests ----------
+
+    @Test
+    fun `getAllUrls should return list of OriginalUrlResponse`() {
+        every { repository.findAll() } returns listOf(
+            UrlMapping(1L, "https://a.com", "aaa111"),
+            UrlMapping(2L, "https://b.com", "bbb222")
         )
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.shortCode").value("abc123"))
+
+        val result = service.getAllUrls()
+
+        assertEquals(2, result.size)
+        assertEquals("https://a.com", result[0].originalUrl)
     }
 
     @Test
-    fun `getOriginalUrl should return original URL`() {
-        val response = OriginalUrlResponse("https://example.com")
+    fun `getAllUrls should return empty list when no URLs exist`() {
+        every { repository.findAll() } returns emptyList()
 
-        Mockito.`when`(service.getOriginalUrl("abc123")).thenReturn(response)
+        val result = service.getAllUrls()
 
-        mockMvc.perform(get("/api/original/abc123")) // Updated path
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.originalUrl").value("https://example.com"))
-    }
-
-    @Test
-    fun `getAllUrls should return list of URLs`() {
-        val responseList = listOf(
-            OriginalUrlResponse("https://a.com"),
-            OriginalUrlResponse("https://b.com")
-        )
-
-        Mockito.`when`(service.getAllUrls()).thenReturn(responseList)
-
-        mockMvc.perform(get("/api/urls")) // Updated path
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(2))
-            .andExpect(jsonPath("$[0].originalUrl").value("https://a.com"))
-    }
-
-    // ---------- Negative Tests ----------
-
-    @Test
-    fun `getOriginalUrl should return 404 when URL not found`() {
-        Mockito.`when`(service.getOriginalUrl("invalid"))
-            .thenThrow(UrlNotFoundException("No URL found for short code: invalid"))
-
-        mockMvc.perform(get("/api/original/invalid")) // Updated path
-            .andExpect(status().isNotFound)
-            .andExpect(jsonPath("$.error").value("No URL found for short code: invalid"))
-    }
-
-    @Test
-    fun `shortenUrl should return 400 for invalid input`() {
-        val request = ShortenRequestDto("") // empty URL (invalid)
-
-        mockMvc.perform(
-            post("/api/shorten") // Updated path
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-        )
-            .andExpect(status().isBadRequest)
+        assertTrue(result.isEmpty())
     }
 }
