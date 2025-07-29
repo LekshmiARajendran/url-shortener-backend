@@ -1,29 +1,30 @@
 # URL Shortener Backend
 
-This is a beginner-friendly URL Shortener backend project built with **Spring Boot (Kotlin)** and **PostgreSQL**.  
-I created this as part of a coding challenge while learning backend development and practicing clean architecture and testing.
-
+A backend URL shortening service built using Kotlin, Spring Boot, PostgreSQL, and Docker.
+This project was created as part of a coding challenge to demonstrate backend development skills, clean architecture, and integration testing with real databases.
 ---
 
-## What this project does
+# Features
 
-- Shorten a long URL into a short 6-character code.
-- Retrieve the original URL using the short code.
-- List all stored URLs.
-- Includes basic input validation and error handling.
+- Convert long URLs into random 6-character short codes using salted hashing (MD5 + Base64).
+- Always generates a new short code even for the same URL (no reuse).
+- Retrieve the original URL from its short code.
+- URL format validation before shortening.
+- No endpoint for listing all URLs (avoids exposing sensitive data).
+- Clean architecture: Controller → Service → Repository → DB.
+- Unit, repository, and integration tests included.
 
 ---
 
 ## Technologies I used
 
 - **Kotlin** – Programming language
-- **Spring Boot** – To create REST APIs
+- **Spring Boot** – REST API framework
 - **Spring Data JPA** – For database interactions
 - **PostgreSQL** – Database
 - **Docker** – To run PostgreSQL in a container
-- **JUnit 5 + MockK + MockMvc** – For testing
+- **JUnit 5 + MockK + SpringMockK** – Testing framework
 - **Gradle (Kotlin DSL)** – Build tool
-
 ---
 
 ## How the project is organized
@@ -33,58 +34,67 @@ I created this as part of a coding challenge while learning backend development 
 - `repository/` → Connects to the database
 - `model/` → Database entity
 - `dto/` → Request and response objects
-- `exception/` → Custom exceptions and error handling
-
-There is also a **test** folder where I wrote unit tests and integration tests.
+- `exception/` → Reserved for future custom error handling
+- `test/` →  Unit, repository, and integration tests
 
 ---
 
-## How to run this project (beginner steps)
+## Setup & Run
 
-1. **Start PostgreSQL in Docker**
-    - If the container is already created, just start it:  
-      `docker start urlshortener-db`
-    - If not, create it for the first time:  
-      `docker run --name urlshortener-db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=urlshortener -p 5432:5432 -d postgres:16`
+1. **Start PostgreSQL via Docker**
+   `docker run --name urlshortener-db \
+   -e POSTGRES_USER=postgres \
+   -e POSTGRES_PASSWORD=password \
+   -e POSTGRES_DB=urlshortener \
+   -p 5432:5432 -d postgres:16`
+
+   **Test DB (Integration tests)**
+   `docker run --name urlshortener-test-db \
+   -e POSTGRES_USER=postgres \
+   -e POSTGRES_PASSWORD=postgres \
+   -e POSTGRES_DB=urlshortener_test \
+   -p 5433:5432 -d postgres:16`
 
 2. **Run the application**
-    - Open the project in IntelliJ and run `UrlshortenerApplication.kt`, **or** use terminal:  
+    - Open the project in IntelliJ and run `UrlshortenerApplication.kt`, 
+    - **or** use terminal:  
       `./gradlew bootRun`
 
 3. **Test the API endpoints using Postman**
     - Shorten URL: `POST http://localhost:8080/api/shorten`  
       Body: `{ "url": "https://example.com" }`
     - Retrieve original: `GET http://localhost:8080/api/original/{shortCode}`
-    - List all URLs: `GET http://localhost:8080/api/urls`
 
 ---
 
 ## How I tested it
 
-- Wrote **unit tests** for service and controller using mocks (MockK and MockMvc).
-- Wrote **repository tests** using real PostgreSQL (test profile).
-- Wrote **integration tests** to check the entire flow (API → DB).
-- All tests pass (19 tests, 100% successful).
+- **Unit tests** for controller and service (MockK + SpringMockK)
+- **Repository tests** using PostgreSQL test DB
+- **Integration tests** validating full flow
+- Current: 9 passing test cases (future: expand to cover invalid inputs & edge cases)
 
+## Run all tests:
+`./gradlew test`
 ---
+
+# DB Reset (if needed)
+
+- If testing repeatedly, clear tables with:
+- `docker exec -it urlshortener-db psql -U postgres -d urlshortener -c "TRUNCATE url_mapping RESTART IDENTITY CASCADE;`
 
 ## Future improvements I am planning
 
-- Add redirect feature (e.g., `GET /{shortCode}` should redirect to original URL).
-- Add Docker Compose to run both app and database together easily.
+- Use Docker Compose to spin up app + DB together.
+- Add custom exceptions + global error handler (clean JSON error responses).
 - Write automated Postman test scripts (instead of only manual testing).
+- Add redirect feature (e.g., `GET /{shortCode}` should redirect to original URL).
+- Expand test coverage (invalid URL, collision edge cases).
 ---
-
 ## Why I built this
 
 - To learn how to structure a backend project properly.
 - To practice database integration with Docker.
 - To understand unit testing and integration testing in a real project.
 
----
-
-## Note
-
-This project is part of a coding challenge and also my learning journey in backend development.  
-It's not for production use but demonstrates how I approach building and testing a REST API from scratch.
 
