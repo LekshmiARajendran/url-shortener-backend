@@ -2,6 +2,7 @@ package com.dkb.urlshortener.service
 
 import com.dkb.urlshortener.dto.ShortenRequestDto
 import com.dkb.urlshortener.dto.ShortenResponseDto
+import com.dkb.urlshortener.exception.UrlNotFoundException
 import com.dkb.urlshortener.model.UrlMapping
 import com.dkb.urlshortener.repository.UrlMappingRepository
 import org.springframework.beans.factory.annotation.Value
@@ -23,10 +24,10 @@ class UrlShortenerServiceImpl(
             throw IllegalArgumentException("Invalid URL format")
         }
 
-        // **Check if original URL already exists**
+        // Check if original URL already exists
         val existing = repository.findByOriginalUrl(request.originalUrl)
         if (existing != null) {
-            return ShortenResponseDto(existing.shortCode) // Return same shortCode for same URL
+            return ShortenResponseDto(existing.shortCode)  // Return only short code
         }
 
         // Generate unique short code
@@ -36,12 +37,12 @@ class UrlShortenerServiceImpl(
         val entity = UrlMapping(originalUrl = request.originalUrl, shortCode = shortCode)
         repository.save(entity)
 
-        return ShortenResponseDto(shortCode)
+        return ShortenResponseDto(shortCode)  // Return only short code
     }
 
     override fun getOriginalUrl(shortCode: String): String {
         val mapping = repository.findByShortCode(shortCode)
-            ?: throw IllegalArgumentException("Short URL not found")
+            ?: throw UrlNotFoundException("Short URL not found")
         return mapping.originalUrl
     }
 
