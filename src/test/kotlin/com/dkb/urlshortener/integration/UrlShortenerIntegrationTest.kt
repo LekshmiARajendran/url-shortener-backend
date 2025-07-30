@@ -23,7 +23,6 @@ class UrlShortenerIntegrationTest(
 
     @Test
     fun `should shorten URL and retrieve original`() {
-        // Step 1: Send POST to shorten URL
         val request = ShortenRequestDto("https://integration-test.com")
         val headers = HttpHeaders().apply { contentType = MediaType.APPLICATION_JSON }
         val entity = HttpEntity(request, headers)
@@ -34,12 +33,9 @@ class UrlShortenerIntegrationTest(
             Map::class.java
         )
 
-        // Validate response: shortCode should be returned
         assertEquals(HttpStatus.OK, shortenResponse.statusCode)
         val shortCode = shortenResponse.body?.get("shortCode") as String
-        println("Generated shortCode: $shortCode")
 
-        // Step 2: Send GET to retrieve original URL
         val getResponse = restTemplate.exchange(
             "http://localhost:$port/api/$shortCode",
             HttpMethod.GET,
@@ -49,5 +45,55 @@ class UrlShortenerIntegrationTest(
 
         assertEquals(HttpStatus.OK, getResponse.statusCode)
         assertEquals("https://integration-test.com", getResponse.body?.get("originalUrl"))
+    }
+
+    @Test
+    fun `should return same short code for duplicate URL`() {
+        val request = ShortenRequestDto("https://duplicate-test.com")
+        val headers = HttpHeaders().apply { contentType = MediaType.APPLICATION_JSON }
+        val entity = HttpEntity(request, headers)
+
+        val firstResponse = restTemplate.postForEntity(
+            "http://localhost:$port/api/shorten",
+            entity,
+            Map::class.java
+        )
+
+        val secondResponse = restTemplate.postForEntity(
+            "http://localhost:$port/api/shorten",
+            entity,
+            Map::class.java
+        )
+
+        assertEquals(firstResponse.body?.get("shortCode"), secondResponse.body?.get("shortCode"))
+    }
+
+    @Test
+    fun `should return 404 for invalid short code`() {
+        val getResponse = restTemplate.exchange(
+            "http://localhost:$port/api/original/invalid",
+            HttpMethod.GET,
+            null,
+            Map::class.java
+        )
+
+        assertEquals(HttpStatus.NOT_FOUND, getResponse.statusCode)
+        assertEquals("no url found for invalid", getResponse.body?.get("error"))
+    }
+
+    @Test
+    fun `should return 400 for invalid URL in POST`() {
+        val request = ShortenRequestDto("invalid-url")
+        val headers = HttpHeaders().apply { contentType = MediaType.APPLICATION_JSON }
+        val entity = HttpEntity(request, headers)
+
+        val response = restTemplate.postForEntity(
+            "http://localhost:$port/api/shorten",
+            entity,
+            Map::class.java
+        )
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals("Invalid URL format", response.body?.get("error"))
     }
 }

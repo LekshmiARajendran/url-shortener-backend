@@ -2,6 +2,7 @@ package com.dkb.urlshortener.controller
 
 import com.dkb.urlshortener.dto.ShortenRequestDto
 import com.dkb.urlshortener.dto.ShortenResponseDto
+import com.dkb.urlshortener.exception.UrlNotFoundException
 import com.dkb.urlshortener.service.UrlShortenerService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
@@ -52,7 +53,29 @@ class UrlShortenerControllerTest(
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.originalUrl").value("https://google.com"))
+    }
 
-        verify { service.getOriginalUrl("abc123") }
+    @Test
+    fun `GET original alternative endpoint works`() {
+        every { service.getOriginalUrl("abc123") } returns "https://google.com"
+
+        mockMvc.perform(
+            get("/api/original/abc123")
+                .accept(MediaType.APPLICATION_JSON)
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.originalUrl").value("https://google.com"))
+    }
+
+    @Test
+    fun `GET returns 404 for invalid short code`() {
+        every { service.getOriginalUrl("invalid") } throws UrlNotFoundException("no url found for invalid")
+
+        mockMvc.perform(
+            get("/api/original/invalid")
+                .accept(MediaType.APPLICATION_JSON)
+        )
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.error").value("no url found for invalid"))
     }
 }

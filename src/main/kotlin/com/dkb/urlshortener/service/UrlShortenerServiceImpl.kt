@@ -27,7 +27,7 @@ class UrlShortenerServiceImpl(
         // Check if original URL already exists
         val existing = repository.findByOriginalUrl(request.originalUrl)
         if (existing != null) {
-            return ShortenResponseDto(existing.shortCode)  // Return only short code
+            return ShortenResponseDto(existing.shortCode) // Return existing shortCode
         }
 
         // Generate unique short code
@@ -37,12 +37,12 @@ class UrlShortenerServiceImpl(
         val entity = UrlMapping(originalUrl = request.originalUrl, shortCode = shortCode)
         repository.save(entity)
 
-        return ShortenResponseDto(shortCode)  // Return only short code
+        return ShortenResponseDto(shortCode)
     }
 
     override fun getOriginalUrl(shortCode: String): String {
         val mapping = repository.findByShortCode(shortCode)
-            ?: throw UrlNotFoundException("Short URL not found")
+            ?: throw UrlNotFoundException("no url found for $shortCode") // <-- Updated message
         return mapping.originalUrl
     }
 
