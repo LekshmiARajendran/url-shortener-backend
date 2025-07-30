@@ -1,7 +1,9 @@
 package com.dkb.urlshortener.integration
 
 import com.dkb.urlshortener.dto.ShortenRequestDto
+import com.dkb.urlshortener.repository.UrlMappingRepository
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -14,8 +16,14 @@ import org.springframework.test.context.ActiveProfiles
 @ActiveProfiles("test")
 class UrlShortenerIntegrationTest(
     @Autowired val restTemplate: TestRestTemplate,
+    @Autowired val repository: UrlMappingRepository,
     @LocalServerPort val port: Int
 ) {
+
+    @BeforeEach
+    fun cleanDatabase() {
+        repository.deleteAll() // Ensures fresh state for each test run
+    }
 
     private fun url(path: String) = "http://localhost:$port$path"
 
