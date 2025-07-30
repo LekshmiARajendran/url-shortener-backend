@@ -127,5 +127,15 @@
 - To understand unit testing and integration testing in a real project.
 
 ---
+## Testing Summary
+
+- **Controller Tests**: Verify positive cases (201 Created for valid POST, 200 for valid GET) and negative/edge cases (400 for invalid or malformed URLs, 404 for invalid short codes, 405 for wrong HTTP methods).
+- **Service Tests**: Validate business logic including duplicates, strict http/https validation, and error handling for invalid inputs.
+- **Repository Tests**: Ensure correct persistence and retrieval by original URL and short code.
+- **Integration Tests**: End-to-end flow with real PostgreSQL test DB, covering valid, duplicate, invalid, and malformed input scenarios. Database cleanup runs before each test.
+
+(Current: 21 passing test cases — positive, negative, and edge cases covered)
+---
+
 ## Note
 I added these changes after submitting the coding challenge, after self-reviewing through the codes.
