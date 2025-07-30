@@ -5,7 +5,6 @@ import com.dkb.urlshortener.dto.ShortenResponseDto
 import com.dkb.urlshortener.model.UrlMapping
 import com.dkb.urlshortener.repository.UrlMappingRepository
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import java.net.MalformedURLException
 import java.net.URL
@@ -19,30 +18,25 @@ class UrlShortenerServiceImpl(
 ) : UrlShortenerService {
 
     override fun shortenUrl(request: ShortenRequestDto): ShortenResponseDto {
-        // Validate input URL format
+        // Validate input
         if (!isValidUrl(request.originalUrl)) {
             throw IllegalArgumentException("Invalid URL format")
         }
 
-        var entity: UrlMapping? = null
-        var saved = false
-
-        // Retry loop to handle rare short code collisions
-        while (!saved) {
-            try {
-                val shortCode = generateUniqueShortCode(request.originalUrl)
-
-                // Save mapping (no uniqueness on original URL, unique on shortCode)
-                entity = repository.save(UrlMapping(originalUrl = request.originalUrl, shortCode = shortCode))
-                saved = true
-            } catch (ex: DataIntegrityViolationException) {
-                // If collision occurs (duplicate shortCode), retry with new salt
-                continue
-            }
+        // **Check if original URL already exists**
+        val existing = repository.findByOriginalUrl(request.originalUrl)
+        if (existing != null) {
+            return ShortenResponseDto(existing.shortCode) // Return same shortCode for same URL
         }
 
-        // Return ONLY the short code (Postman expects this)
-        return ShortenResponseDto(entity!!.shortCode)
+        // Generate unique short code
+        val shortCode = generateUniqueShortCode(request.originalUrl)
+
+        // Save new mapping
+        val entity = UrlMapping(originalUrl = request.originalUrl, shortCode = shortCode)
+        repository.save(entity)
+
+        return ShortenResponseDto(shortCode)
     }
 
     override fun getOriginalUrl(shortCode: String): String {
@@ -51,19 +45,16 @@ class UrlShortenerServiceImpl(
         return mapping.originalUrl
     }
 
-    /**
-     * Generates a unique short code using random salt + MD5 hash + Base64 (6 chars)
-     */
     private fun generateUniqueShortCode(url: String): String {
         var code: String
         do {
             code = generateShortCodeWithSalt(url)
-        } while (repository.findByShortCode(code) != null) // extra safety
+        } while (repository.findByShortCode(code) != null)
         return code
     }
 
     private fun generateShortCodeWithSalt(url: String): String {
-        val salt = UUID.randomUUID().toString() // random salt
+        val salt = UUID.randomUUID().toString()
         val saltedUrl = "$salt$url"
         val digest = MessageDigest.getInstance("MD5").digest(saltedUrl.toByteArray())
         return Base64.getUrlEncoder().withoutPadding().encodeToString(digest).take(6)

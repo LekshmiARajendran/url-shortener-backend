@@ -4,17 +4,17 @@ import jakarta.persistence.*
 import java.time.LocalDateTime
 
 @Entity
-@Table(name = "url_mapping")   // removed unique constraint on original_url
+@Table(name = "url_mapping")
 data class UrlMapping(
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
-    @Column(name = "original_url", nullable = false)  // no unique constraint
+    @Column(name = "original_url", nullable = false)
     val originalUrl: String,
 
-    @Column(name = "short_code", nullable = false, unique = true) // shortcode stays unique
+    @Column(name = "short_code", nullable = false, unique = true)
     val shortCode: String,
 
     @Column(nullable = false)
