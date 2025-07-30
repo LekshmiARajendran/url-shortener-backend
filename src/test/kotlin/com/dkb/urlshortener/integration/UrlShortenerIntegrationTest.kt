@@ -7,11 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.client.TestRestTemplate
 import org.springframework.boot.test.web.server.LocalServerPort
-import org.springframework.http.HttpEntity
-import org.springframework.http.HttpMethod
-import org.springframework.http.HttpStatus
-import org.springframework.http.HttpHeaders
-import org.springframework.http.MediaType
+import org.springframework.http.*
 import org.springframework.test.context.ActiveProfiles
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -21,23 +17,21 @@ class UrlShortenerIntegrationTest(
     @LocalServerPort val port: Int
 ) {
 
+    private fun url(path: String) = "http://localhost:$port$path"
+
     @Test
     fun `should shorten URL and retrieve original`() {
         val request = ShortenRequestDto("https://integration-test.com")
         val headers = HttpHeaders().apply { contentType = MediaType.APPLICATION_JSON }
         val entity = HttpEntity(request, headers)
 
-        val shortenResponse = restTemplate.postForEntity(
-            "http://localhost:$port/api/shorten",
-            entity,
-            Map::class.java
-        )
+        val shortenResponse = restTemplate.postForEntity(url("/api/shorten"), entity, Map::class.java)
 
-        assertEquals(HttpStatus.OK, shortenResponse.statusCode)
+        assertEquals(HttpStatus.CREATED, shortenResponse.statusCode)
         val shortCode = shortenResponse.body?.get("shortCode") as String
 
         val getResponse = restTemplate.exchange(
-            "http://localhost:$port/api/$shortCode",
+            url("/api/$shortCode"),
             HttpMethod.GET,
             null,
             Map::class.java
@@ -53,17 +47,8 @@ class UrlShortenerIntegrationTest(
         val headers = HttpHeaders().apply { contentType = MediaType.APPLICATION_JSON }
         val entity = HttpEntity(request, headers)
 
-        val firstResponse = restTemplate.postForEntity(
-            "http://localhost:$port/api/shorten",
-            entity,
-            Map::class.java
-        )
-
-        val secondResponse = restTemplate.postForEntity(
-            "http://localhost:$port/api/shorten",
-            entity,
-            Map::class.java
-        )
+        val firstResponse = restTemplate.postForEntity(url("/api/shorten"), entity, Map::class.java)
+        val secondResponse = restTemplate.postForEntity(url("/api/shorten"), entity, Map::class.java)
 
         assertEquals(firstResponse.body?.get("shortCode"), secondResponse.body?.get("shortCode"))
     }
@@ -71,27 +56,35 @@ class UrlShortenerIntegrationTest(
     @Test
     fun `should return 404 for invalid short code`() {
         val getResponse = restTemplate.exchange(
-            "http://localhost:$port/api/original/invalid",
+            url("/api/invalid"),
             HttpMethod.GET,
             null,
             Map::class.java
         )
 
         assertEquals(HttpStatus.NOT_FOUND, getResponse.statusCode)
-        assertEquals("no url found for invalid", getResponse.body?.get("error"))
+        assertEquals("Short URL not found", getResponse.body?.get("error"))
     }
 
     @Test
-    fun `should return 400 for invalid URL in POST`() {
+    fun `should return 400 for invalid URL`() {
         val request = ShortenRequestDto("invalid-url")
         val headers = HttpHeaders().apply { contentType = MediaType.APPLICATION_JSON }
         val entity = HttpEntity(request, headers)
 
-        val response = restTemplate.postForEntity(
-            "http://localhost:$port/api/shorten",
-            entity,
-            Map::class.java
-        )
+        val response = restTemplate.postForEntity(url("/api/shorten"), entity, Map::class.java)
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals("Invalid URL format", response.body?.get("error"))
+    }
+
+    @Test
+    fun `should return 400 for non-http protocols`() {
+        val request = ShortenRequestDto("ftp://example.com")
+        val headers = HttpHeaders().apply { contentType = MediaType.APPLICATION_JSON }
+        val entity = HttpEntity(request, headers)
+
+        val response = restTemplate.postForEntity(url("/api/shorten"), entity, Map::class.java)
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals("Invalid URL format", response.body?.get("error"))

@@ -55,16 +55,27 @@ class UrlShortenerServiceImplTest {
     fun `getOriginalUrl throws exception for invalid short code`() {
         every { repository.findByShortCode("invalid") } returns null
 
-        val exception = assertThrows(UrlNotFoundException::class.java) {
+        val exception = assertThrows(NoSuchElementException::class.java) {
             service.getOriginalUrl("invalid")
         }
 
-        assertEquals("no url found for invalid", exception.message)
+        assertEquals("Short URL not found", exception.message)
     }
 
     @Test
     fun `shortenUrl throws exception for invalid URL`() {
         val request = ShortenRequestDto("invalid-url")
+
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            service.shortenUrl(request)
+        }
+
+        assertEquals("Invalid URL format", exception.message)
+    }
+
+    @Test
+    fun `shortenUrl throws exception for non-http protocols`() {
+        val request = ShortenRequestDto("ftp://example.com")
 
         val exception = assertThrows(IllegalArgumentException::class.java) {
             service.shortenUrl(request)

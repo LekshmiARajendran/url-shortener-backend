@@ -25,7 +25,7 @@ class UrlShortenerControllerTest(
     lateinit var service: UrlShortenerService
 
     @Test
-    fun `POST shorten returns shortCode`() {
+    fun `POST shorten returns 201 and shortCode`() {
         val request = ShortenRequestDto("https://google.com")
         val response = ShortenResponseDto("abc123")
 
@@ -36,10 +36,49 @@ class UrlShortenerControllerTest(
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         )
-            .andExpect(status().isOk)
+            .andExpect(status().isCreated)
             .andExpect(jsonPath("$.shortCode").value("abc123"))
 
         verify { service.shortenUrl(any()) }
+    }
+
+    @Test
+    fun `POST shorten returns 400 for invalid URL`() {
+        val request = ShortenRequestDto("invalid-url")
+        every { service.shortenUrl(any()) } throws IllegalArgumentException("Invalid URL format")
+
+        mockMvc.perform(
+            post("/api/shorten")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error").value("Invalid URL format"))
+    }
+
+    @Test
+    fun `POST shorten returns 400 for missing body`() {
+        mockMvc.perform(
+            post("/api/shorten")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}")
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error").value("Request body is missing or malformed"))
+    }
+
+    @Test
+    fun `POST shorten returns 400 for non-http protocols`() {
+        val request = ShortenRequestDto("ftp://example.com")
+        every { service.shortenUrl(any()) } throws IllegalArgumentException("Invalid URL format")
+
+        mockMvc.perform(
+            post("/api/shorten")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error").value("Invalid URL format"))
     }
 
     @Test
@@ -55,26 +94,25 @@ class UrlShortenerControllerTest(
     }
 
     @Test
-    fun `GET original alternative endpoint works`() {
-        every { service.getOriginalUrl("abc123") } returns "https://google.com"
-
-        mockMvc.perform(
-            get("/api/original/abc123")
-                .accept(MediaType.APPLICATION_JSON)
-        )
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.originalUrl").value("https://google.com"))
-    }
-
-    @Test
     fun `GET returns 404 for invalid short code`() {
-        every { service.getOriginalUrl("invalid") } throws UrlNotFoundException("no url found for invalid")
+        every { service.getOriginalUrl("invalid") } throws NoSuchElementException("Short URL not found")
 
         mockMvc.perform(
-            get("/api/original/invalid")
+            get("/api/invalid")
                 .accept(MediaType.APPLICATION_JSON)
         )
             .andExpect(status().isNotFound)
-            .andExpect(jsonPath("$.error").value("no url found for invalid"))
+            .andExpect(jsonPath("$.error").value("Short URL not found"))
+    }
+
+    @Test
+    fun `wrong HTTP method returns 405`() {
+        mockMvc.perform(
+            put("/api/shorten")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(ShortenRequestDto("https://google.com")))
+        )
+            .andExpect(status().isMethodNotAllowed)
+            .andExpect(jsonPath("$.error").value("Method not allowed"))
     }
 }
