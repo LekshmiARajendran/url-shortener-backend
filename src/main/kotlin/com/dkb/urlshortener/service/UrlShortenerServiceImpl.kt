@@ -2,7 +2,6 @@ package com.dkb.urlshortener.service
 
 import com.dkb.urlshortener.dto.ShortenRequestDto
 import com.dkb.urlshortener.dto.ShortenResponseDto
-import com.dkb.urlshortener.exception.UrlNotFoundException
 import com.dkb.urlshortener.model.UrlMapping
 import com.dkb.urlshortener.repository.UrlMappingRepository
 import org.springframework.beans.factory.annotation.Value
@@ -19,18 +18,18 @@ class UrlShortenerServiceImpl(
 ) : UrlShortenerService {
 
     override fun shortenUrl(request: ShortenRequestDto): ShortenResponseDto {
-        // Validate input
+        // Validate input URL
         if (!isValidUrl(request.originalUrl)) {
             throw IllegalArgumentException("Invalid URL format")
         }
 
-        // Check if original URL already exists
+        // If URL already shortened, return same shortCode
         val existing = repository.findByOriginalUrl(request.originalUrl)
         if (existing != null) {
-            return ShortenResponseDto(existing.shortCode) // Return existing shortCode
+            return ShortenResponseDto(existing.shortCode)
         }
 
-        // Generate unique short code
+        // Generate unique shortCode
         val shortCode = generateUniqueShortCode(request.originalUrl)
 
         // Save new mapping
@@ -42,7 +41,7 @@ class UrlShortenerServiceImpl(
 
     override fun getOriginalUrl(shortCode: String): String {
         val mapping = repository.findByShortCode(shortCode)
-            ?: throw UrlNotFoundException("no url found for $shortCode") // <-- Updated message
+            ?: throw NoSuchElementException("Short URL not found")
         return mapping.originalUrl
     }
 
@@ -63,8 +62,9 @@ class UrlShortenerServiceImpl(
 
     private fun isValidUrl(url: String): Boolean {
         return try {
-            URL(url)
-            true
+            val parsedUrl = URL(url)
+            // Allow only http and https schemes
+            parsedUrl.protocol == "http" || parsedUrl.protocol == "https"
         } catch (e: MalformedURLException) {
             false
         }

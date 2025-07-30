@@ -2,7 +2,6 @@ package com.dkb.urlshortener.controller
 
 import com.dkb.urlshortener.dto.ShortenRequestDto
 import com.dkb.urlshortener.dto.ShortenResponseDto
-import com.dkb.urlshortener.exception.UrlNotFoundException
 import com.dkb.urlshortener.service.UrlShortenerService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every

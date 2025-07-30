@@ -1,7 +1,6 @@
 package com.dkb.urlshortener.service
 
 import com.dkb.urlshortener.dto.ShortenRequestDto
-import com.dkb.urlshortener.exception.UrlNotFoundException
 import com.dkb.urlshortener.model.UrlMapping
 import com.dkb.urlshortener.repository.UrlMappingRepository
 import io.mockk.every
