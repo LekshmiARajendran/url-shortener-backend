@@ -20,6 +20,13 @@
 
 - Unit, repository, and integration tests included.
 
+- Stricter URL validation: now only `http` and `https` protocols are allowed.
+
+- 405 Method Not Allowed handling for unsupported HTTP methods.
+
+- Unified 400 Bad Request handling for malformed JSON bodies.
+
+
 ---
 
 ## Technologies I used
@@ -54,23 +61,15 @@
 ## Setup & Run
 
 1. **Start PostgreSQL via Docker**
-   `docker run --name urlshortener-db \
-   -e POSTGRES_USER=postgres \
-   -e POSTGRES_PASSWORD=password \
-   -e POSTGRES_DB=urlshortener \
-   -p 5432:5432 -d postgres:16`
+   `docker run --name urlshortener-db    -e POSTGRES_USER=postgres    -e POSTGRES_PASSWORD=password    -e POSTGRES_DB=urlshortener    -p 5432:5432 -d postgres:16`
 
    **Test DB (Integration tests)**
-   `docker run --name urlshortener-test-db \
-   -e POSTGRES_USER=postgres \
-   -e POSTGRES_PASSWORD=postgres \
-   -e POSTGRES_DB=urlshortener_test \
-   -p 5433:5432 -d postgres:16`
+   `docker run --name urlshortener-test-db    -e POSTGRES_USER=postgres    -e POSTGRES_PASSWORD=postgres    -e POSTGRES_DB=urlshortener_test    -p 5433:5432 -d postgres:16`
 
 2. **Run the application**
-    - Open the project in IntelliJ and run `UrlshortenerApplication.kt`, 
-    - **or** use terminal:  
-      `./gradlew bootRun`
+   - Open the project in IntelliJ and run `UrlshortenerApplication.kt`,
+   - **or** use terminal:  
+     `./gradlew bootRun`
 
    3. **Test the API endpoints using Postman**
 
@@ -96,11 +95,11 @@
 
 - **Integration tests** validating full flow (POST + GET + errors)
 
-- Current: 16 passing test cases (covering valid, duplicate, and invalid scenarios)
+- Current: 21 passing test cases (covering valid, duplicate, invalid scenarios, malformed body, and wrong HTTP method)
 
 ## Run all tests:
 
-   `./gradlew test`
+`./gradlew test`
 ---
 
 # DB Reset (if needed)
@@ -127,4 +126,6 @@
 
 - To understand unit testing and integration testing in a real project.
 
-
+---
+## Note
+I added these changes after submitting the coding challenge, after self-reviewing through the codes.
